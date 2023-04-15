@@ -4,23 +4,6 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-fn get_lap(pos: usize, n: usize) -> usize {
-    let lap_1 = n.next_power_of_two();
-    let shift = lap_1.trailing_zeros();
-    pos >> shift
-}
-
-fn increment_pos(pos: usize, n: usize) -> usize {
-    let lap_1 = n.next_power_of_two();
-    let index_mask = lap_1 - 1;
-    let lap_mask = !index_mask;
-    if pos & index_mask == n - 1 {
-        (pos & lap_mask) + lap_1
-    } else {
-        pos + 1
-    }
-}
-
 pub struct RingBuffer<T, const N: usize> {
     start: AtomicUsize,
     end: AtomicUsize,
@@ -33,7 +16,6 @@ unsafe impl<T, const N: usize> Sync for RingBuffer<T, N> {}
 
 impl<T, const N: usize> RingBuffer<T, N> {
     pub fn new() -> Self {
-        assert!(N.checked_next_power_of_two().is_some());
         RingBuffer {
             start: AtomicUsize::new(0),
             end: AtomicUsize::new(0),
@@ -46,15 +28,12 @@ impl<T, const N: usize> RingBuffer<T, N> {
         let place = loop {
             let reserved = self.reserved.load(Ordering::Relaxed);
             let start = self.start.load(Ordering::Relaxed);
-            let index_mask = (N.next_power_of_two()) - 1;
-            if reserved & index_mask == start & index_mask
-                && get_lap(start, N) + 1 == get_lap(reserved, N)
-            {
+            if reserved == start + N {
                 return Err(v);
             }
             match self.reserved.compare_exchange_weak(
                 reserved,
-                increment_pos(reserved, N),
+                reserved + 1,
                 Ordering::Acquire,
                 Ordering::Relaxed,
             ) {
@@ -62,7 +41,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
                 Err(_) => {}
             }
         };
-        let index = place & (N.next_power_of_two() - 1);
+        let index = place % N;
         unsafe {
             self.data[index].get().write_volatile(MaybeUninit::new(v));
         }
@@ -73,7 +52,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
             }
             // the buffer ends just at the point we have written to - good
             // this check maintains that everything between start and end is initialised
-            let end_next = increment_pos(end, N);
+            let end_next = end + 1;
             match self.end.compare_exchange_weak(
                 end,
                 end_next,
@@ -94,11 +73,11 @@ impl<T, const N: usize> RingBuffer<T, N> {
             if start == end {
                 return None;
             }
-            let start_index = start & (N.next_power_of_two() - 1);
+            let start_index = start % N;
             let val_uninit = unsafe { self.data[start_index].get().read_volatile() };
             match self.start.compare_exchange_weak(
                 start,
-                increment_pos(start, N),
+                start + 1,
                 Ordering::Release,
                 Ordering::Relaxed,
             ) {
