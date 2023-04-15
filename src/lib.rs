@@ -5,8 +5,11 @@ use std::{
 };
 
 pub struct RingBuffer<T, const N: usize> {
+    /// the index of the first initialised element, plus k * N
     start: AtomicUsize,
+    /// the index of the first uninitialised element, plus k * N
     end: AtomicUsize,
+    /// the index of the first non-reserved slot, plus k * N
     reserved: AtomicUsize,
     data: [UnsafeCell<MaybeUninit<T>>; N],
 }
