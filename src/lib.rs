@@ -192,4 +192,28 @@ mod tests {
             }
         });
     }
+
+    #[test]
+    fn two_producer_one_consumer() {
+        let queue = RingBuffer::<u64, 32>::new();
+        let n = 1_000_000;
+        std::thread::scope(|scope| {
+            scope.spawn(|| {
+                for i in 0..n / 2 {
+                    while queue.try_insert(i * 2).is_err() {}
+                }
+            });
+            scope.spawn(|| {
+                for i in 0..n / 2 {
+                    while queue.try_insert(i * 2 + 1).is_err() {}
+                }
+            });
+            let mut x = 0;
+            while x < (n - 1) * n / 2 {
+                if let Some(y) = queue.try_get() {
+                    x += y;
+                }
+            }
+        });
+    }
 }
