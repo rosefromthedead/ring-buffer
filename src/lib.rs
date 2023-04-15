@@ -170,4 +170,26 @@ mod tests {
             }
         });
     }
+
+    #[test]
+    fn two_thread_count_million() {
+        let queue = RingBuffer::<u32, 16>::new();
+        let n = 1_000_000;
+        std::thread::scope(|scope| {
+            scope.spawn(|| {
+                let mut x = 0;
+                while x <= n {
+                    while queue.try_insert(x).is_err() {}
+                    x += 1;
+                }
+            });
+            let mut x = 0;
+            while x < n {
+                if let Some(y) = queue.try_get() {
+                    assert_eq!(y, x);
+                    x += 1;
+                }
+            }
+        });
+    }
 }
