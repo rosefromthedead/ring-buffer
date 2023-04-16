@@ -52,7 +52,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
             match self.end.compare_exchange_weak(
                 place,
                 place + 1,
-                Ordering::Relaxed,
+                Ordering::Release,
                 Ordering::Relaxed,
             ) {
                 Ok(_) => break,
@@ -65,7 +65,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
     pub fn try_get(&self) -> Option<T> {
         loop {
             let start = self.start.load(Ordering::Relaxed);
-            let end = self.end.load(Ordering::Relaxed);
+            let end = self.end.load(Ordering::Acquire);
             if start == end {
                 return None;
             }
