@@ -49,16 +49,9 @@ impl<T, const N: usize> RingBuffer<T, N> {
             self.data[index].get().write_volatile(MaybeUninit::new(v));
         }
         loop {
-            let end = self.end.load(Ordering::Relaxed);
-            if end != place {
-                continue;
-            }
-            // the buffer ends just at the point we have written to - good
-            // this check maintains that everything between start and end is initialised
-            let end_next = end + 1;
             match self.end.compare_exchange_weak(
-                end,
-                end_next,
+                place,
+                place + 1,
                 Ordering::Relaxed,
                 Ordering::Relaxed,
             ) {
