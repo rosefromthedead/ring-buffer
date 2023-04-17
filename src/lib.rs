@@ -30,7 +30,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
     pub fn try_insert(&self, v: T) -> Result<(), T> {
         let place = loop {
             let reserved = self.reserved.load(Ordering::Relaxed);
-            let start = self.start.load(Ordering::Relaxed);
+            let start = self.start.load(Ordering::Acquire);
             if reserved == start + N {
                 return Err(v);
             }
@@ -74,7 +74,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
             match self.start.compare_exchange_weak(
                 start,
                 start + 1,
-                Ordering::Relaxed,
+                Ordering::Release,
                 Ordering::Relaxed,
             ) {
                 Ok(_) => return unsafe { Some(val_uninit.assume_init()) },
