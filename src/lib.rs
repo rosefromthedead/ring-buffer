@@ -18,7 +18,7 @@ unsafe impl<T, const N: usize> Send for RingBuffer<T, N> {}
 unsafe impl<T, const N: usize> Sync for RingBuffer<T, N> {}
 
 impl<T, const N: usize> RingBuffer<T, N> {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         RingBuffer {
             start: AtomicUsize::new(0),
             end: AtomicUsize::new(0),
