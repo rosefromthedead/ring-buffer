@@ -1,4 +1,6 @@
-use std::{
+#![no_std]
+
+use core::{
     cell::UnsafeCell,
     mem::MaybeUninit,
     sync::atomic::{AtomicUsize, Ordering},
